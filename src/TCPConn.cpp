@@ -329,6 +329,8 @@ void TCPConn::serverHandshake() {
       if(checkStr.compare(_rand_handshake) != 0)
       {
          std::stringstream msg;
+         if(_verbosity >= 3)
+            msg << checkStr << " does not match " << _rand_handshake << "\n";
          msg << "Handshake failed. Random strings do not match. Cannot authenticate.";
          _server_log.writeLog(msg.str().c_str());
          disconnect();
@@ -372,6 +374,8 @@ void TCPConn::transmitData() {
       if(checkStr.compare(_rand_handshake) != 0)
       {
          std::stringstream msg;
+         if(_verbosity >= 3)
+            msg << checkStr << " does not match " << _rand_handshake << "\n";
          msg << "Handshake failed. Random strings do not match. Cannot authenticate.";
          _server_log.writeLog(msg.str().c_str());
          disconnect();
