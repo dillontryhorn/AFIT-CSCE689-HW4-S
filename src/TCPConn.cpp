@@ -322,9 +322,9 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      decryptData(buf);
       std::vector<uint8_t> new_buf(buf.begin(), buf.begin()+32);
       std::string checkStr(buf.begin()+32, buf.end());
+      decryptData(checkStr);
 
       if(checkStr.compare(_rand_handshake) != 0)
       {
