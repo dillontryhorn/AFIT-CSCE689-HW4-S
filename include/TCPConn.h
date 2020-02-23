@@ -16,7 +16,8 @@ public:
    ~TCPConn();
 
    // The current status of the connection
-   enum statustype { s_none, s_connecting, s_connected, s_datatx, s_datarx, s_waitack, s_hasdata };
+   enum statustype { s_none, s_connecting, s_clientHandshake, s_serverHandshake, s_connected, s_datatx, s_datarx, s_waitack, s_hasdata };
+   // TRYHORN : added client and server handshake methods
 
    statustype getStatus() { return _status; };
 
@@ -72,6 +73,8 @@ protected:
    // Functions to execute various stages of a connection 
    void sendSID();
    void waitForSID();
+   void clientHandshake(); // TRYHORN : added methods for handshakes
+   void serverHandshake();
    void transmitData();
    void waitForData();
    void awaitAck();
@@ -88,7 +91,6 @@ protected:
    // Places startcmd and endcmd strings around the data in buf and returns it in buf
    void wrapCmd(std::vector<uint8_t> &buf, std::vector<uint8_t> &startcmd,
                                                     std::vector<uint8_t> &endcmd);
-
 
 private:
 
@@ -116,6 +118,10 @@ private:
    unsigned int _verbosity;
 
    LogMgr &_server_log;
+
+   // TRYHORN : added random handshake string for comparison, 32 bit
+   std::string _rand_handshake;
+   unsigned int _encrypted_bit_length = 32;
 };
 
 

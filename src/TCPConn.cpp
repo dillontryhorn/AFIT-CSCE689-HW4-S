@@ -181,7 +181,16 @@ void TCPConn::handleConnection() {
          case s_connected:
             waitForSID();
             break;
-   
+
+         // TRYHORN : Added handshake methods
+         case s_clientHandshake:
+            clientHandshake();
+            break;
+ 
+         case s_serverHandshake:
+            serverHandshake();
+            break;
+
          // Client: connecting user - replicate data
          case s_datatx:
             transmitData();
@@ -224,7 +233,8 @@ void TCPConn::sendSID() {
    wrapCmd(buf, c_sid, c_endsid);
    sendData(buf);
 
-   _status = s_datatx; 
+   // TRYHORN : send SID then prompt client for handshake
+   _status = s_clientHandshake; 
 }
 
 /**********************************************************************************************
@@ -253,15 +263,85 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      // Send our Node ID
-      buf.assign(_svr_id.begin(), _svr_id.end());
+      genRandString(_rand_handshake, _encrypted_bit_length);
+      std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
+      buf = vec; // TRYHORN : generate a random string and send it
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
+
+      _status = s_serverHandshake;
+   }
+}
+
+/*********************************************
+*  clientHandshake() - generate random string,
+*  encrypt string and send with buffer
+**********************************************/
+void TCPConn::clientHandshake() {
+   if (_connfd.hasData()) {
+      std::vector<uint8_t> buf;
+
+      if (!getData(buf))
+         return;
+
+      if (!getCmdData(buf, c_sid, c_endsid)) {
+         std::stringstream msg;
+         msg << "Client Handshake: Invalid format. Cannot authenticate";
+         _server_log.writeLog(msg.str().c_str());
+         disconnect();
+         return;
+      }
+
+      encryptData(buf);
+      genRandString(_rand_handshake, _encrypted_bit_length);
+      std::vector<uint8_t> new_buf(_rand_handshake.begin(), _rand_handshake.end());
+      new_buf.insert(new_buf.end(), buf.begin(), buf.end());
+      wrapCmd(new_buf, c_sid, c_endsid);
+      sendData(new_buf);
+
+      _status = s_datatx; 
+   }
+}
+
+/******************************************************
+*  serverHandshake() - receive random string, decrypt, 
+*  verify, encrypt and send back
+*******************************************************/
+void TCPConn::serverHandshake() {
+   if (_connfd.hasData()) {
+      std::vector<uint8_t> buf;
+
+      if (!getData(buf))
+         return;
+
+      if (!getCmdData(buf, c_sid, c_endsid)) {
+         std::stringstream msg;
+         msg << "Server Handshake: Invalid format. Cannot authenticate.";
+         _server_log.writeLog(msg.str().c_str());
+         disconnect();
+         return;
+      }
+
+      decryptData(buf);
+      std::vector<uint8_t> new_buf(buf.begin(), buf.begin()+31);
+      std::string checkStr(buf.begin()+32, buf.end());
+
+      if(checkStr.compare(_rand_handshake) != 0)
+      {
+         std::stringstream msg;
+         msg << "Handshake failed. Random strings do not match. Cannot authenticate.";
+         _server_log.writeLog(msg.str().c_str());
+         disconnect();
+         return;
+      }
+
+      encryptData(new_buf);
+      wrapCmd(new_buf, c_sid, c_endsid);
+      sendData(new_buf);
 
       _status = s_datarx;
    }
 }
-
 
 /**********************************************************************************************
  * transmitData()  - receives the SID from the server and transmits data
@@ -281,6 +361,18 @@ void TCPConn::transmitData() {
       if (!getCmdData(buf, c_sid, c_endsid)) {
          std::stringstream msg;
          msg << "SID string from connected server invalid format. Cannot authenticate.";
+         _server_log.writeLog(msg.str().c_str());
+         disconnect();
+         return;
+      }
+
+      // TRYHORN : Make sure random string matches the stored handshake
+      decryptData(buf);
+      std::string checkStr(buf.begin(), buf.end());
+      if(checkStr.compare(_rand_handshake) != 0)
+      {
+         std::stringstream msg;
+         msg << "Handshake failed. Random strings do not match. Cannot authenticate.";
          _server_log.writeLog(msg.str().c_str());
          disconnect();
          return;
