@@ -343,8 +343,8 @@ void TCPConn::serverHandshake() {
 
       if(_verbosity >= 3) {
          std::stringstream msg;
-         std::string debugStr(buf.begin(), buf.end());
-         msg << "server handshake" << debugStr << "\n";
+         std::string debugStr(buf.begin()+_encrypted_bit_length, buf.end());
+         msg << "server handshake" << checkStr << "\n" << debugStr << "\n";
          _server_log.writeLog(msg.str().c_str());
       }
 
