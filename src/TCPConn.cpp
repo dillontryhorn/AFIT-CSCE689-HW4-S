@@ -300,7 +300,7 @@ void TCPConn::clientHandshake() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      genRandString(_rand_handshake, _encrypted_bit_length);
+      //genRandString(_rand_handshake, _encrypted_bit_length);
       buf.assign(_rand_handshake.begin(), _rand_handshake.end());
       encryptData(buf);
       //new_buf.insert(new_buf.end(), buf.begin(), buf.end());
