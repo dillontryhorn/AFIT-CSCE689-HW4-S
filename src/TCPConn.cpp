@@ -341,6 +341,13 @@ void TCPConn::serverHandshake() {
       decryptData(new_buf);
       std::string checkStr(new_buf.begin(), new_buf.end());
 
+      if(_verbosity >= 3) {
+         std::stringstream msg;
+         std::string debugStr(buf.begin(), buf.end());
+         msg << "server handshake" << debugStr << "\n";
+         _server_log.writeLog(msg.str().c_str());
+      }
+
       if(checkStr.compare(_rand_handshake) != 0)
       {
          std::stringstream msg;

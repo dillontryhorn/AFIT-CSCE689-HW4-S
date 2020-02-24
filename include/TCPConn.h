@@ -121,7 +121,7 @@ private:
 
    // TRYHORN : added random handshake string for comparison, 32 bit
    std::string _rand_handshake;
-   unsigned int _encrypted_bit_length = 16;
+   unsigned int _encrypted_bit_length = 32;
 };
 
 
