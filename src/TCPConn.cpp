@@ -70,6 +70,8 @@ TCPConn::TCPConn(LogMgr &server_log, CryptoPP::SecByteBlock &key, unsigned int v
 
    c_endsid = c_sid;
    c_endsid.insert(c_endsid.begin()+1, 1, slash);
+
+   genRandString(_rand_handshake, _encrypted_bit_length);
 }
 
 
@@ -265,7 +267,7 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      genRandString(_rand_handshake, _encrypted_bit_length);
+      //genRandString(_rand_handshake, _encrypted_bit_length);
       //std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
       //buf = vec; // TRYHORN : generate a random string and send it
 
@@ -280,7 +282,7 @@ void TCPConn::waitForSID() {
 
 /*********************************************
 *  clientHandshake() - generate random string,
-*  encrypt string and send with buffer
+*  encrypt string and send
 **********************************************/
 void TCPConn::clientHandshake() {
    if (_connfd.hasData()) {
