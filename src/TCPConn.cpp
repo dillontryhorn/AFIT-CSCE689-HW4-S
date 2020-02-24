@@ -70,8 +70,6 @@ TCPConn::TCPConn(LogMgr &server_log, CryptoPP::SecByteBlock &key, unsigned int v
 
    c_endsid = c_sid;
    c_endsid.insert(c_endsid.begin()+1, 1, slash);
-
-   genRandString(_rand_handshake, _encrypted_bit_length);
 }
 
 
@@ -267,12 +265,15 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      //genRandString(_rand_handshake, _encrypted_bit_length);
-      //std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
+      genRandString(_rand_handshake, _encrypted_bit_length);
+      std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
       //buf = vec; // TRYHORN : generate a random string and send it
 
       // Send our Node ID
       buf.assign(_svr_id.begin(), _svr_id.end());
+      buf.insert(buf.end(), vec.begin(), vec.end());
+      // TRYHORN : Send random string
+      
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
 
@@ -286,7 +287,7 @@ void TCPConn::waitForSID() {
 **********************************************/
 void TCPConn::clientHandshake() {
    if (_connfd.hasData()) {
-      std::vector<uint8_t> buf;
+      std::vector<uint8_t> buf, rand_buf;
 
       if (!getData(buf))
          return;
@@ -299,12 +300,15 @@ void TCPConn::clientHandshake() {
          return;
       }
 
-      std::string node(buf.begin(), buf.end());
+      std::string node(buf.begin(), buf.begin()+_svr_id.size());
       setNodeID(node.c_str());
 
-      //genRandString(_rand_handshake, _encrypted_bit_length);
-      buf.assign(_rand_handshake.begin(), _rand_handshake.end());
+      rand_buf.assign(buf.begin()+_svr_id.size(), buf.end());
+      buf = rand_buf;
       encryptData(buf);
+
+      genRandString(_rand_handshake, _encrypted_bit_length);
+      buf.insert(buf.end(), _rand_handshake.begin(), _rand_handshake.end());
       //new_buf.insert(new_buf.end(), buf.begin(), buf.end());
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
@@ -319,7 +323,7 @@ void TCPConn::clientHandshake() {
 *******************************************************/
 void TCPConn::serverHandshake() {
    if (_connfd.hasData()) {
-      std::vector<uint8_t> buf;
+      std::vector<uint8_t> buf, new_buf;
 
       if (!getData(buf))
          return;
@@ -332,8 +336,9 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      decryptData(buf);
-      std::string checkStr(buf.begin(), buf.end());
+      new_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
+      decryptData(new_buf);
+      std::string checkStr(new_buf.begin(), new_buf.end());
 
       if(checkStr.compare(_rand_handshake) != 0)
       {
@@ -345,7 +350,7 @@ void TCPConn::serverHandshake() {
          disconnect();
          return;
       }
-
+      new_buf.assign(buf.begin()+_encrypted_bit_length, buf.end());
       encryptData(buf);
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
