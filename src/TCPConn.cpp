@@ -271,7 +271,8 @@ void TCPConn::waitForSID() {
 
       // Send our Node ID
       buf.assign(_svr_id.begin(), _svr_id.end());
-      buf.insert(buf.end(), vec.begin(), vec.end());
+      vec.insert(vec.end(), buf.begin(), buf.end());
+      buf = vec;
       // TRYHORN : Send random string
       
       wrapCmd(buf, c_sid, c_endsid);
@@ -300,10 +301,10 @@ void TCPConn::clientHandshake() {
          return;
       }
 
-      std::string node(buf.begin(), buf.begin()+_svr_id.size());
+      std::string node(buf.begin()+_encrypted_bit_length, buf.end());
       setNodeID(node.c_str());
 
-      rand_buf.assign(buf.begin()+_svr_id.size(), buf.end());
+      rand_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
       buf = rand_buf;
       encryptData(buf);
 
@@ -351,6 +352,7 @@ void TCPConn::serverHandshake() {
          return;
       }
       new_buf.assign(buf.begin()+_encrypted_bit_length, buf.end());
+      buf = new_buf;
       encryptData(buf);
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
