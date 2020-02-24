@@ -306,12 +306,12 @@ void TCPConn::clientHandshake() {
 
       rand_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
       buf = rand_buf;
-      encryptData(buf);
 
       genRandString(_rand_handshake, _encrypted_bit_length);
       buf.insert(buf.end(), _rand_handshake.begin(), _rand_handshake.end());
       //new_buf.insert(new_buf.end(), buf.begin(), buf.end());
-      wrapCmd(buf, c_sid, c_endsid);
+      encryptData(buf);
+      wrapCmd(buf, c_auth, c_endauth);
       sendData(buf);
 
       _status = s_datatx; 
@@ -324,12 +324,12 @@ void TCPConn::clientHandshake() {
 *******************************************************/
 void TCPConn::serverHandshake() {
    if (_connfd.hasData()) {
-      std::vector<uint8_t> buf;
+      std::vector<uint8_t> buf, new_buf;
 
       if (!getData(buf))
          return;
 
-      if (!getCmdData(buf, c_sid, c_endsid)) {
+      if (!getCmdData(buf, c_auth, c_endauth)) {
          std::stringstream msg;
          msg << "Server Handshake: Invalid format. Cannot authenticate.";
          _server_log.writeLog(msg.str().c_str());
@@ -337,20 +337,11 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      std::string myStr(buf.begin(), buf.begin()+_encrypted_bit_length);
-      std::vector<uint8_t> new_buf(myStr.begin(), myStr.end());
-      decryptData(new_buf);
+      decryptData(buf);
+      new_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
       std::string checkStr(new_buf.begin(), new_buf.end());
 
-      if(_verbosity >= 3) {
-         std::stringstream msg;
-         std::string debugStr(buf.begin()+_encrypted_bit_length, buf.end());
-         msg << "server handshake" << checkStr << "\n" << debugStr << "\n";
-         _server_log.writeLog(msg.str().c_str());
-      }
-
-      std::string handshake(_rand_handshake.begin(), _rand_handshake.begin()+_encrypted_bit_length/2);
-      if(checkStr.compare(handshake) != 0)
+      if(checkStr.compare(_rand_handshake) != 0)
       {
          std::stringstream msg;
          if(_verbosity >= 3)
@@ -363,7 +354,7 @@ void TCPConn::serverHandshake() {
       new_buf.assign(buf.begin()+_encrypted_bit_length, buf.end());
       buf = new_buf;
       encryptData(buf);
-      wrapCmd(buf, c_sid, c_endsid);
+      wrapCmd(buf, c_auth, c_endauth);
       sendData(buf);
 
       _status = s_datarx;
@@ -385,7 +376,7 @@ void TCPConn::transmitData() {
       if (!getData(buf))
          return;
 
-      if (!getCmdData(buf, c_sid, c_endsid)) {
+      if (!getCmdData(buf, c_auth, c_endauth)) {
          std::stringstream msg;
          msg << "SID string from connected server invalid format. Cannot authenticate.";
          _server_log.writeLog(msg.str().c_str());
