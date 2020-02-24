@@ -177,26 +177,26 @@ void TCPConn::handleConnection() {
             sendSID();
             break;
 
-         // Server: Wait for the SID from a newly-connected client, then send our SID
+         // Server: Wait for the SID from a newly-connected client, then send our random string
          case s_connected:
             waitForSID();
             break;
          /*************************TRYHORN******************************/
-         // Client: Just got SID, Send encrypted bits
+         // Client: Just got random string, encrypt and send back with our random string
          case s_clientHandshake:
             clientHandshake();
             break;
 
-         // Server: Wait for encrypted bits and send ours
+         // Server: Wait for encrypted bits, decrypt, verify, encrypt client random string and send back
          case s_serverHandshake:
             serverHandshake();
             break;
-         /***************************************************************/
-         // Client: connecting user - replicate data
+         
+         // Client: decrypt random string, verify, then connecting user - replicate data
          case s_datatx:
             transmitData();
             break;
-
+         /***************************************************************/
          // Server: Receive data from the client
          case s_datarx:
             waitForData();
@@ -265,9 +265,9 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
+      // TRYHORN : Creation of a random string, send with SID
       genRandString(_rand_handshake, _encrypted_bit_length);
       std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
-      //buf = vec; // TRYHORN : generate a random string and send it
 
       // Send our Node ID
       buf.assign(_svr_id.begin(), _svr_id.end());
@@ -306,10 +306,9 @@ void TCPConn::clientHandshake() {
 
       rand_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
       buf = rand_buf;
-
       genRandString(_rand_handshake, _encrypted_bit_length);
       buf.insert(buf.end(), _rand_handshake.begin(), _rand_handshake.end());
-      //new_buf.insert(new_buf.end(), buf.begin(), buf.end());
+
       encryptData(buf);
       wrapCmd(buf, c_auth, c_endauth);
       sendData(buf);
