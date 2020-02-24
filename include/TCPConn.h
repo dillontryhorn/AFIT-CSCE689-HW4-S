@@ -119,7 +119,7 @@ private:
 
    LogMgr &_server_log;
 
-   // TRYHORN : added random handshake string for comparison, 32 bit
+   // TRYHORN : added random handshake string for comparison, 32 char
    std::string _rand_handshake;
    unsigned int _encrypted_bit_length = 32;
 };
