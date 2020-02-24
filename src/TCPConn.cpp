@@ -338,6 +338,7 @@ void TCPConn::serverHandshake() {
       }
 
       std::string myStr(buf.begin(), buf.begin()+_encrypted_bit_length);
+      std::vector<uint8_t> new_buf(myStr.begin(), myStr.end());
       decryptData(new_buf);
       std::string checkStr(new_buf.begin(), new_buf.end());
 
