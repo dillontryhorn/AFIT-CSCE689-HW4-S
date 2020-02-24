@@ -265,7 +265,7 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      //genRandString(_rand_handshake, _encrypted_bit_length);
+      genRandString(_rand_handshake, _encrypted_bit_length);
       //std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
       //buf = vec; // TRYHORN : generate a random string and send it
 
