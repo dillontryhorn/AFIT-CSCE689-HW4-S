@@ -349,7 +349,7 @@ void TCPConn::serverHandshake() {
          _server_log.writeLog(msg.str().c_str());
       }
 
-      std::string handshake(_rand_handshake.begin(), _rand_handshake.begin()+_encrypted_bit_length/2;
+      std::string handshake(_rand_handshake.begin(), _rand_handshake.begin()+_encrypted_bit_length/2);
       if(checkStr.compare(_rand_handshake) != 0)
       {
          std::stringstream msg;
