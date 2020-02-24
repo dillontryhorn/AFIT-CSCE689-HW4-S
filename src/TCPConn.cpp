@@ -181,16 +181,17 @@ void TCPConn::handleConnection() {
          case s_connected:
             waitForSID();
             break;
-
-         // TRYHORN : Added handshake methods
+         /*************************TRYHORN******************************/
+         // Client: Just got SID, Send encrypted bits
          case s_clientHandshake:
             clientHandshake();
             break;
- 
+
+         // Server: Wait for encrypted bits and send ours
          case s_serverHandshake:
             serverHandshake();
             break;
-
+         /***************************************************************/
          // Client: connecting user - replicate data
          case s_datatx:
             transmitData();
@@ -232,9 +233,10 @@ void TCPConn::sendSID() {
    std::vector<uint8_t> buf(_svr_id.begin(), _svr_id.end());
    wrapCmd(buf, c_sid, c_endsid);
    sendData(buf);
-
-   // TRYHORN : send SID then prompt client for handshake
+   /*******************TRYHORN***************************/
+   // Send SID then prompt client for handshake
    _status = s_clientHandshake; 
+   /*****************************************************/
 }
 
 /**********************************************************************************************
@@ -263,9 +265,12 @@ void TCPConn::waitForSID() {
       std::string node(buf.begin(), buf.end());
       setNodeID(node.c_str());
 
-      genRandString(_rand_handshake, _encrypted_bit_length);
-      std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
-      buf = vec; // TRYHORN : generate a random string and send it
+      //genRandString(_rand_handshake, _encrypted_bit_length);
+      //std::vector<uint8_t> vec(_rand_handshake.begin(), _rand_handshake.end());
+      //buf = vec; // TRYHORN : generate a random string and send it
+
+      // Send our Node ID
+      buf.assign(_svr_id.begin(), _svr_id.end());
       wrapCmd(buf, c_sid, c_endsid);
       sendData(buf);
 
@@ -292,12 +297,15 @@ void TCPConn::clientHandshake() {
          return;
       }
 
-      encryptData(buf);
+      std::string node(buf.begin(), buf.end());
+      setNodeID(node.c_str());
+
       genRandString(_rand_handshake, _encrypted_bit_length);
-      std::vector<uint8_t> new_buf(_rand_handshake.begin(), _rand_handshake.end());
-      new_buf.insert(new_buf.end(), buf.begin(), buf.end());
-      wrapCmd(new_buf, c_sid, c_endsid);
-      sendData(new_buf);
+      buf.assign(_rand_handshake.begin(), _rand_handshake.end());
+      encryptData(buf);
+      //new_buf.insert(new_buf.end(), buf.begin(), buf.end());
+      wrapCmd(buf, c_sid, c_endsid);
+      sendData(buf);
 
       _status = s_datatx; 
    }
@@ -322,10 +330,8 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      std::vector<uint8_t> new_buf(buf.begin(), buf.begin()+32);
-      std::vector<uint8_t> encryptedStr(buf.begin()+32, buf.end());
-      decryptData(encryptedStr);
-      std::string checkStr(encryptedStr.begin(), encryptedStr.end());
+      decryptData(buf);
+      std::string checkStr(buf.begin(), buf.end());
 
       if(checkStr.compare(_rand_handshake) != 0)
       {
@@ -338,9 +344,9 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      encryptData(new_buf);
-      wrapCmd(new_buf, c_sid, c_endsid);
-      sendData(new_buf);
+      encryptData(buf);
+      wrapCmd(buf, c_sid, c_endsid);
+      sendData(buf);
 
       _status = s_datarx;
    }
@@ -382,9 +388,6 @@ void TCPConn::transmitData() {
          disconnect();
          return;
       }
-
-      std::string node(buf.begin(), buf.end());
-      setNodeID(node.c_str());
 
       // Send the replication data
       sendData(_outputbuf);
