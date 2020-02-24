@@ -337,7 +337,7 @@ void TCPConn::serverHandshake() {
          return;
       }
 
-      new_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length);
+      new_buf.assign(buf.begin(), buf.begin()+_encrypted_bit_length+_encrypted_bit_length);
       decryptData(new_buf);
       std::string checkStr(new_buf.begin(), new_buf.end());
 
