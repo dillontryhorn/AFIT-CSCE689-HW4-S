@@ -324,7 +324,7 @@ void TCPConn::clientHandshake() {
 *******************************************************/
 void TCPConn::serverHandshake() {
    if (_connfd.hasData()) {
-      std::vector<uint8_t> buf, new_buf;
+      std::vector<uint8_t> buf;
 
       if (!getData(buf))
          return;
