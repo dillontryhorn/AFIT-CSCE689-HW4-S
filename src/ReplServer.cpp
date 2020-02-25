@@ -83,7 +83,7 @@ void ReplServer::replicate() {
    if (_verbosity >= 2)
       std::cout << "Server bound to " << _ip_addr << ", port: " << _port << " and listening\n";
 
-   std::vector<time_t> node_time_skew(3, 0);
+   std::vector<time_t> node_time_skew(3, 0); //vector for the three nodes
 
    // Replicate until we get the shutdown signal
    while (!_shutdown) {
@@ -115,6 +115,7 @@ void ReplServer::replicate() {
          std::list<DronePlot>::iterator data_point = _plotdb.begin();
          std::list<DronePlot>::iterator next_data_point = std::next(_plotdb.begin());
 
+         //Adjust timestamp of first point
          if(node_time_skew.at(data_point->node_id-1) != 0)
             data_point->timestamp = node_time_skew.at(data_point->node_id-1) + data_point->timestamp;
 
@@ -122,6 +123,7 @@ void ReplServer::replicate() {
             // Duplicate data points
             if(data_point->latitude == next_data_point->latitude && data_point->longitude == next_data_point->longitude) {
                
+               //Calculate time skew based on timestamp difference
                if(data_point->node_id-1 == _tyrannical_coordinator && node_time_skew.at(data_point->node_id-1) == 0)
                   node_time_skew.at(next_data_point->node_id-1) = data_point->timestamp - next_data_point->timestamp;
                else if(next_data_point->node_id-1 == _tyrannical_coordinator && node_time_skew.at(data_point->node_id-1) == 0)
@@ -132,11 +134,12 @@ void ReplServer::replicate() {
                   _duplicates.push_back(data_point);
                else 
                   _duplicates.push_back(next_data_point);
-
+            
+            //Adjust timestamps of non-duplicates
             } else if(node_time_skew.at(next_data_point->node_id-1) != 0) {
                next_data_point->timestamp = node_time_skew.at(next_data_point->node_id-1) + next_data_point->timestamp;
             }
-            data_point = std::next(data_point);
+            data_point = std::next(data_point); //Next data point
             next_data_point = std::next(next_data_point);
          } while(next_data_point != _plotdb.end()); //Iterate through entire plot database
 
