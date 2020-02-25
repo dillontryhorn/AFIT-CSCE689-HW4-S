@@ -74,6 +74,7 @@ void ReplServer::replicate() {
    // Track when we started the server
    _start_time = time(NULL);
    _last_repl = 0;
+   _tyrannical_coordinator = 1; //TRYHORN : Simplicity - assign Node 1 as the coordinator
 
    // Set up our queue's listening socket
    _queue.bindSvr(_ip_addr.c_str(), _port);
@@ -82,7 +83,8 @@ void ReplServer::replicate() {
    if (_verbosity >= 2)
       std::cout << "Server bound to " << _ip_addr << ", port: " << _port << " and listening\n";
 
-  
+   std::vector<time_t> node_time_skew(3, 0);
+
    // Replicate until we get the shutdown signal
    while (!_shutdown) {
 
@@ -107,6 +109,42 @@ void ReplServer::replicate() {
          // Incoming replication--add it to this server's local database
          addReplDronePlots(data);         
       }       
+
+      if(_plotdb.size() > 1) {
+         _plotdb.sortByTime();
+         std::list<DronePlot>::iterator data_point = _plotdb.begin();
+         std::list<DronePlot>::iterator next_data_point = std::next(_plotdb.begin());
+
+         if(node_time_skew.at(data_point->node_id-1) != 0)
+            data_point->timestamp = node_time_skew.at(data_point->node_id-1) + data_point->timestamp;
+
+         do {
+            // Duplicate data points
+            if(data_point->latitude == next_data_point->latitude && data_point->longitude == next_data_point->longitude) {
+               
+               if(data_point->node_id-1 == _tyrannical_coordinator && node_time_skew.at(data_point->node_id-1) == 0)
+                  node_time_skew.at(next_data_point->node_id-1) = data_point->timestamp - next_data_point->timestamp;
+               else if(next_data_point->node_id-1 == _tyrannical_coordinator && node_time_skew.at(data_point->node_id-1) == 0)
+                  node_time_skew.at(data_point->node_id-1) = next_data_point->timestamp - data_point->timestamp;
+
+               // Since we decided node 1 to be the coordinator, send the higher node data to be deleted
+               if(data_point->node_id-1 > next_data_point->node_id-1)
+                  _duplicates.push_back(data_point);
+               else 
+                  _duplicates.push_back(next_data_point);
+
+            } else if(node_time_skew.at(next_data_point->node_id-1) != 0) {
+               next_data_point->timestamp = node_time_skew.at(next_data_point->node_id-1) + next_data_point->timestamp;
+            }
+            data_point = std::next(data_point);
+            next_data_point = std::next(next_data_point);
+         } while(next_data_point != _plotdb.end()); //Iterate through entire plot database
+
+         // Take all duplicates and delete them from the plot, clear duplicate vector
+         for(auto duplicate : _duplicates)
+            _plotdb.erase(duplicate);
+         _duplicates.clear();
+      }
 
       usleep(1000);
    }   

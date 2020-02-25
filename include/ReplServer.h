@@ -63,6 +63,12 @@ private:
    // Used to bind the server
    std::string _ip_addr;
    unsigned short _port;
+
+   //Coordinator
+   unsigned int _tyrannical_coordinator = 0;
+
+   //Deduplicator
+   std::vector<std::list<DronePlot>::iterator> _duplicates;
 };
 
 
