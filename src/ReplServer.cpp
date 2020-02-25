@@ -74,7 +74,6 @@ void ReplServer::replicate() {
    // Track when we started the server
    _start_time = time(NULL);
    _last_repl = 0;
-   _tyrannical_coordinator = 1; //TRYHORN : Simplicity - assign Node 1 as the coordinator
 
    // Set up our queue's listening socket
    _queue.bindSvr(_ip_addr.c_str(), _port);
@@ -82,8 +81,6 @@ void ReplServer::replicate() {
 
    if (_verbosity >= 2)
       std::cout << "Server bound to " << _ip_addr << ", port: " << _port << " and listening\n";
-
-   std::vector<time_t> node_time_skew(3, 0); //vector for the three nodes
 
    // Replicate until we get the shutdown signal
    while (!_shutdown) {
@@ -110,6 +107,9 @@ void ReplServer::replicate() {
          addReplDronePlots(data);         
       }       
 
+      //Delete duplicates and adjust time skew and timestamps
+      std::vector<time_t> node_time_skew(3, 0); //Vector for the three nodes
+      _tyrannical_coordinator = 1; //Simplicity - assign Node 1 as the coordinator
       if(_plotdb.size() > 1) {
          _plotdb.sortByTime();
          std::list<DronePlot>::iterator data_point = _plotdb.begin();
